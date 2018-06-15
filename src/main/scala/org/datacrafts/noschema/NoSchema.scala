@@ -30,7 +30,8 @@ abstract class NoSchema[T: NoSchema.Type](
 
 }
 
-object NoSchema extends Primitive.Implicits with Container.Implicits with Product.Implicits {
+object NoSchema extends Primitive.Implicits
+  with Container.Implicits with ShapelessProduct.Implicits {
 
   // this is for future extensibility to require extra information about the type
   implicit def noSchemaType[T: TypeTag : ClassTag : Manifest]: Type[T] = new Type[T]

@@ -1,12 +1,12 @@
 package org.datacrafts.noschema.test
 
-import org.datacrafts.noschema.Product
+import org.datacrafts.noschema.ShapelessProduct
 import org.datacrafts.noschema.context.SimpleMapContext
 import org.datacrafts.noschema.test.NoSchemaTest.{TestClass, TestClass2, TestClass3}
 import org.scalatest.FlatSpec
 
 // scalastyle:off
-class NoSchemaTest extends FlatSpec with Product.Implicits {
+class NoSchemaTest extends FlatSpec with ShapelessProduct.Implicits {
 
   "Marshalling and unmarshalling with Map" should "be successful" in {
     val mapContext = SimpleMapContext.noSchema[TestClass]
