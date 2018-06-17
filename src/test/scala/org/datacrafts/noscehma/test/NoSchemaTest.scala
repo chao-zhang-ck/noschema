@@ -9,11 +9,9 @@ import org.scalatest.FlatSpec
 class NoSchemaTest extends FlatSpec with ShapelessProduct.Implicits {
 
   "Marshalling and unmarshalling with Map" should "be successful" in {
-    val defaultMapSchema = MapSchema.default[TestClass]
+    val defaultMapSchema = MapSchema.schema[TestClass]
 
-    println(defaultMapSchema)
     println(defaultMapSchema.schemaInfo)
-    println(defaultMapSchema.dependencySchemaMapInfo)
 
     assert(
       defaultMapSchema.marshal(

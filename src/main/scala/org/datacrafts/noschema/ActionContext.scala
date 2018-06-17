@@ -1,5 +1,6 @@
 package org.datacrafts.noschema
 
+import org.datacrafts.noschema.ActionContext.Marshalling.Parsed
 import org.datacrafts.noschema.VariableContext.LocalContext
 
 /**
@@ -31,8 +32,7 @@ object ActionContext {
     }
 
     // can assign any parser here for structured type
-    def getParser(): Marshalling.Parser =
-      throw new Exception(s"parser for ${variableContext} not implemented")
+    def parseStruct(input: Any): Marshalling.Parsed
 
     // can assign any decoder/deserializer here for primitive type
     @inline
@@ -67,10 +67,6 @@ object ActionContext {
 
   object Marshalling {
 
-    trait Parser {
-      def parse(input: Any): Parsed
-    }
-
     trait Parsed {
 
       def removeSymbol(symbol: Symbol): Parsed
@@ -94,8 +90,7 @@ object ActionContext {
         }
       }
     }
-    def getAssembler(): Unmarshalling.Assembler =
-      throw new Exception(s"assembler for ${variableContext} not implemented")
+    def createAssembled(): Unmarshalling.Assembled
 
     @inline
     def encode(input: T): Any = input
@@ -107,10 +102,6 @@ object ActionContext {
 
   object Unmarshalling {
 
-    trait Assembler {
-      def empty(): Assembled
-    }
-
     trait Assembled {
 
       // add symbol value pairs disassembled from the structured class
@@ -118,7 +109,7 @@ object ActionContext {
       def addSymbolValue(symbol: Symbol, value: Any): Assembled
 
       // this controls the final output form of the structured class after reassembling
-      def value: Any
+      def assembledValue: Any
     }
 
   }

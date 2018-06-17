@@ -1,5 +1,7 @@
 package org.datacrafts.noschema.schema
 
+import scala.util.Try
+
 import org.datacrafts.noschema.{ActionContext, NoSchema, VariableContext}
 import org.datacrafts.noschema.ActionContext.{Marshalling, Unmarshalling}
 import org.datacrafts.noschema.VariableContext.{ContainerElement, LocalContext, MemberVariable}
@@ -14,12 +16,14 @@ import org.datacrafts.noschema.VariableContext.{ContainerElement, LocalContext, 
   * The rule can be arbitrarily complex and even query external metadata system.
   *
   * @param variableContext full context/path of the current variable node
-  * @param decider         arbitrary rules to determine schema operation implementation
   */
-class Schema[T](
-  override val variableContext: VariableContext[T],
-  decider: Schema.Decider
+abstract class Schema[T](
+  override val variableContext: VariableContext[T]
 ) extends ActionContext[T] with Marshalling[T] with Unmarshalling[T] {
+
+  // cache dependency schema, so they only needs to be created once
+  private val dependencySchemaMap =
+    collection.mutable.Map.empty[LocalContext[_], Schema[_]]
 
   // initialize the entire schema tree on creation
   variableContext.localContext.node.dependencies.foreach {
@@ -36,15 +40,15 @@ class Schema[T](
     this.unmarshal(input, variableContext.currentNode)
   }
 
-  private lazy val dependencySchemaMap =
-    collection.mutable.Map.empty[LocalContext[_], Schema[_]]
+  // override this method to determine custom Schema implementation
+  protected def getSchema[D](variableContext: VariableContext[D]): Schema[D]
 
   private def getOrCreateDependencySchema[D](
     dependency: LocalContext[D]
   ): Schema[D] = {
     dependencySchemaMap.getOrElseUpdate(
       dependency,
-      decider.getSchema(variableContext.dependencyContext(dependency))
+      getSchema(variableContext.dependencyContext(dependency))
     ).asInstanceOf[Schema[D]]
   }
 
@@ -56,26 +60,61 @@ class Schema[T](
     dependency: LocalContext[D]
   ): Unmarshalling[D] = getOrCreateDependencySchema(dependency)
 
-  lazy val schemaInfo: String = {
+  lazy val schemaInfo: (String, Any) = {
 
-    variableContext.localContext match {
+    val schemaInfoKey = variableContext.localContext match {
       case MemberVariable(symbol, node) => s"${symbol.map(_.name).getOrElse("root")}: ${node}"
       case ContainerElement(node) => s"element: ${node}"
     }
+
+    schemaInfoKey -> Map(
+      "parser" -> parser,
+      "assembler" -> assembler,
+      "dependencies" -> dependencySchemaMap.values.map(_.schemaInfo).toMap
+    )
   }
 
-  lazy val dependencySchemaMapInfo: Map[String, Any] = {
-    dependencySchemaMap.values.map{
-      dependencySchema => dependencySchema.schemaInfo -> dependencySchema.dependencySchemaMapInfo
-    }.toMap
+  // override this method to get custom parser implementation (marshalling)
+  protected def getParser(): Option[Schema.Parser] = None
+
+  private lazy val parser: Option[Schema.Parser] =
+    if (currentNode.category == NoSchema.Category.Struct) {
+    getParser()
+  } else {
+    None
   }
 
+  final override def parseStruct(input: Any): Marshalling.Parsed = {
+    parser
+      .getOrElse(throw new Exception(s"parser for $variableContext not implemented"))
+      .parseStruct(input)
+  }
+
+  // override this method to get custom assembler implementation (unmarshalling)
+  protected def getAssembler(): Option[Schema.Assembler] = None
+
+  private lazy val assembler: Option[Schema.Assembler] =
+    if (currentNode.category == NoSchema.Category.Struct) {
+      getAssembler()
+    } else {
+      None
+    }
+
+  final override def createAssembled(): Unmarshalling.Assembled = {
+    assembler
+      .getOrElse(throw new Exception(s"assembler for $variableContext not implemented"))
+      .createAssembled()
+  }
 }
 
 object Schema {
 
-  trait Decider {
-    def getSchema[D](variableContext: VariableContext[D]): Schema[D]
+  trait Parser {
+    def parseStruct(input: Any): Marshalling.Parsed
+  }
+
+  trait Assembler {
+    def createAssembled(): Unmarshalling.Assembled
   }
 
 }

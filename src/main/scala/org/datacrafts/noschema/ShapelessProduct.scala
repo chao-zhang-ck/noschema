@@ -21,11 +21,11 @@ class ShapelessProduct[T : NoSchema.Type, R <: HList](
 ) {
 
   override def marshal(input: Any, context: Marshalling[T]): T = {
-    generic.from(shapeless.marshalHList(context.getParser().parse(input), context))
+    generic.from(shapeless.marshalHList(context.parseStruct(input), context))
   }
 
   override def unmarshal(input: T, context: Unmarshalling[T]): Any = {
-    shapeless.unmarshalHList(generic.to(input), context).value
+    shapeless.unmarshalHList(generic.to(input), context).assembledValue
   }
 }
 
@@ -54,7 +54,7 @@ object ShapelessProduct {
       }
 
       override def unmarshalHList(hList: HNil, context: Unmarshalling[_]) = {
-        context.getAssembler.empty()
+        context.createAssembled()
       }
     }
 
