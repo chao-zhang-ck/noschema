@@ -1,29 +1,43 @@
-package org.datacrafts.noschema.context
+package org.datacrafts.noschema.schema
 
 import org.datacrafts.logging.Slf4jLogging
-import org.datacrafts.noschema.{ActionContext, NoSchema, VariableContext}
-import org.datacrafts.noschema.ActionContext.{Marshalling, Unmarshalling}
+import org.datacrafts.noschema.{NoSchema, VariableContext}
 import org.datacrafts.noschema.ActionContext.Marshalling.{Parsed, Parser}
 import org.datacrafts.noschema.ActionContext.Unmarshalling.{Assembled, Assembler}
-import org.datacrafts.noschema.VariableContext.LocalContext
 
 /**
-  * Marshalling from and unmarshalling to Map[String, Any] without much customization
+  * Marshalling from and unmarshalling to Map[String, Any]
   */
-object SimpleMapContext {
+object MapSchema {
 
-  def noSchema[T: NoSchema]: SimpleMapContext[T] =
-    new SimpleMapContext(VariableContext.root(implicitly[NoSchema[T]]))
+  def default[T: NoSchema]: Schema[T] =
+    SimpleDecider.getSchema(VariableContext.root(implicitly[NoSchema[T]]))
+
+  // although decider can do arbitrary things, this is recommended way to pass on the same
+  // decider object along.
+  // This decider object is the single place to define an entire set of schema evolution rules
+  object SimpleDecider extends Schema.Decider {
+    override def getSchema[D](
+      dependency: VariableContext[D]
+    ): Schema[D] = {
+      new MapSchema[D](dependency, SimpleDecider)
+    }
+  }
 
 }
 
-class SimpleMapContext[T](override val variableContext: VariableContext[T])
-  extends ActionContext[T] with Marshalling[T] with Unmarshalling[T] with Slf4jLogging {
+class MapSchema[T](
+  variableContext: VariableContext[T],
+  decider: Schema.Decider
+) extends Schema[T](variableContext, decider) with Slf4jLogging {
 
   // override the default behavior to directly cast input based on type information
   // this extra testing can slow down the conversion
   // there is also the option to reuse cached method objects based on full context path
-  override def marshal(input: Any, node: NoSchema[T]): T = {
+  override def marshal(
+    input: Any,
+    node: NoSchema[T]
+  ): T = {
     Option(input) match {
       case Some(value) =>
         val inputClassName = input.getClass.getCanonicalName
@@ -37,14 +51,6 @@ class SimpleMapContext[T](override val variableContext: VariableContext[T])
         }
       case None => getValueForNull()
     }
-  }
-
-  def marshal(input: Any): T = {
-    this.marshal(input, variableContext.currentNode)
-  }
-
-  def unmarshal(input: T): Any = {
-    this.unmarshal(input, variableContext.currentNode)
   }
 
   override def getParser(): Parser = new Parser {
@@ -76,18 +82,15 @@ class SimpleMapContext[T](override val variableContext: VariableContext[T])
     }
   }
 
-  override def dependencyMarshalling[D](localContext: LocalContext[D]): Marshalling[D] = {
-    new SimpleMapContext(
-      variableContext.dependencyContext(localContext)
-    )
-  }
-
   override def getAssembler(): Assembler = new Assembler {
 
     class AssembledMap extends Assembled {
       private val map = collection.mutable.Map.empty[String, Any]
 
-      override def addSymbolValue(symbol: Symbol, value: Any): Assembled = {
+      override def addSymbolValue(
+        symbol: Symbol,
+        value: Any
+      ): Assembled = {
         map += symbol.name -> value
         this
       }
@@ -96,9 +99,5 @@ class SimpleMapContext[T](override val variableContext: VariableContext[T])
     }
 
     override def empty(): Assembled = new AssembledMap
-  }
-
-  override def dependencyUnmarshalling[D](localContext: LocalContext[D]): Unmarshalling[D] = {
-    new SimpleMapContext(variableContext.dependencyContext(localContext))
   }
 }

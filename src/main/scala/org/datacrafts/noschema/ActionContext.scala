@@ -62,8 +62,7 @@ object ActionContext {
     }
 
     // this will be automatically invoked by generated code following the structure
-    def dependencyMarshalling[D](dependency: LocalContext[D]): Marshalling[D] =
-      throw new Exception(s"dependency marshalling for ${variableContext} not implemented")
+    def dependencyMarshalling[D](dependency: LocalContext[D]): Marshalling[D]
   }
 
   object Marshalling {
@@ -101,8 +100,7 @@ object ActionContext {
     @inline
     def encode(input: T): Any = input
 
-    def dependencyUnmarshalling[D](dependency: LocalContext[D]): Unmarshalling[D] =
-      throw new Exception(s"dependency unmarshalling for ${variableContext} not implemented")
+    def dependencyUnmarshalling[D](dependency: LocalContext[D]): Unmarshalling[D]
 
     def noOp: Boolean = false
   }

@@ -1,7 +1,7 @@
 package org.datacrafts.noschema.test
 
 import org.datacrafts.noschema.ShapelessProduct
-import org.datacrafts.noschema.context.SimpleMapContext
+import org.datacrafts.noschema.schema.MapSchema
 import org.datacrafts.noschema.test.NoSchemaTest.{TestClass, TestClass2, TestClass3}
 import org.scalatest.FlatSpec
 
@@ -9,10 +9,14 @@ import org.scalatest.FlatSpec
 class NoSchemaTest extends FlatSpec with ShapelessProduct.Implicits {
 
   "Marshalling and unmarshalling with Map" should "be successful" in {
-    val mapContext = SimpleMapContext.noSchema[TestClass]
+    val defaultMapSchema = MapSchema.default[TestClass]
+
+    println(defaultMapSchema)
+    println(defaultMapSchema.schemaInfo)
+    println(defaultMapSchema.dependencySchemaMapInfo)
 
     assert(
-      mapContext.marshal(
+      defaultMapSchema.marshal(
         Map(
           "v1" -> 10,
           "v5" -> Map("_2" -> 12),
@@ -34,7 +38,7 @@ class NoSchemaTest extends FlatSpec with ShapelessProduct.Implicits {
     )
 
     assert(
-      mapContext.unmarshal(
+      defaultMapSchema.unmarshal(
         TestClass(
           v1 = 1,
           v2 = null

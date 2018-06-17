@@ -22,7 +22,14 @@ abstract class NoSchema[T: NoSchema.Type](
 
   final lazy val tpe = implicitly[NoSchema.Type[T]].tpe
 
-  override def toString: String = s"NoSchema[${category}=${tpe}]"
+  override def toString: String = s"${
+    if (category == NoSchema.Category.Primitive ||
+      category == NoSchema.Category.Struct) {
+      tpe
+    } else {
+      category
+    }
+  }(nullable = ${nullable})"
 
   def marshal(input: Any, context: Marshalling[T]): T
 
